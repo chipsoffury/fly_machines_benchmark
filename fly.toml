@@ -1,0 +1,26 @@
+app="cof-health-test"
+primary_region="bom"
+
+[env]
+  TEST_VAR="test"
+
+[[services]]
+  protocol="tcp"
+  internal_port=8080
+
+  [[services.ports]]
+    port=443
+    handlers=["tls", "http"]
+
+  [[services.http_checks]]
+    interval = 10000
+    grace_period = "2s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    timeout = 2000
+    tls_skip_verify = false
+
+[deploy]
+  strategy="bluegreen"
+
