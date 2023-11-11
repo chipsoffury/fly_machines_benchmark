@@ -22,15 +22,25 @@ class DataEntry {
 
 class FlyTestHelper {
   static final _log = Logger('FlyServerManager');
-  static final _appName = 'cof-health-test';
-  static final _image = 'cof-health-test';
-  static final _version = '0.0.3';
-  static final _baseApiUrl = 'https://$_appName.fly.dev';
 
-  late final FlyMachinesRestClient flyMachinesRestClient;
+  late final FlyMachinesRestClient _flyMachinesRestClient;
 
-  FlyTestHelper(String token) {
-    flyMachinesRestClient = FlyMachinesRestClientProvider.get(token);
+  late final String _appName;
+  late final String _image;
+  late final String _version;
+  late final String _baseApiUrl;
+
+  FlyTestHelper(
+    String token, {
+    String? appName,
+    String? image,
+    String? version,
+  }) {
+    _flyMachinesRestClient = FlyMachinesRestClientProvider.get(token);
+    _appName = appName ?? 'cof-health-test';
+    _image = image ?? 'cof-health-test';
+    _version = version ?? '0.0.3';
+    _baseApiUrl = 'https://$_appName.fly.dev';
   }
 
   Future<MachineInfoResponse> createMachine(FlyRegion flyRegion) async {
@@ -79,7 +89,7 @@ class FlyTestHelper {
     MachineInfoResponse machineInfo;
     try {
       _log.info('Issuing a request to create $machineName in ${flyRegion.code}');
-      machineInfo = await flyMachinesRestClient.createMachine(
+      machineInfo = await _flyMachinesRestClient.createMachine(
         _appName,
         createMachineRequest,
       );
@@ -100,7 +110,7 @@ class FlyTestHelper {
     var t1 = DateTime.now().millisecondsSinceEpoch;
     while (true) {
       try {
-        await flyMachinesRestClient.waitForMachineStatus(
+        await _flyMachinesRestClient.waitForMachineStatus(
           _appName,
           machineId,
           FlyMachineStatus.started,
@@ -139,23 +149,23 @@ class FlyTestHelper {
   }
 
   Future<void> stopAndDestroyAllMachines() async {
-    var machineInfos = await flyMachinesRestClient.listMachines(_appName);
+    var machineInfos = await _flyMachinesRestClient.listMachines(_appName);
     while (machineInfos.isNotEmpty) {
       _log.info('Destroying ${machineInfos.length} machines...');
       try {
-        await Future.wait(machineInfos.map((m) => flyMachinesRestClient.stopMachine(_appName, m.id)));
+        await Future.wait(machineInfos.map((m) => _flyMachinesRestClient.stopMachine(_appName, m.id)));
         await Future.delayed(Duration(seconds: 10));
-        await Future.wait(machineInfos.map((m) => flyMachinesRestClient.destroyMachine(_appName, m.id)));
+        await Future.wait(machineInfos.map((m) => _flyMachinesRestClient.destroyMachine(_appName, m.id)));
         await Future.delayed(Duration(seconds: 2));
       } catch (e) {
         // ignore
       }
-      machineInfos = await flyMachinesRestClient.listMachines(_appName);
+      machineInfos = await _flyMachinesRestClient.listMachines(_appName);
     }
   }
 
   Future<void> stopMachine(String machineId) async {
-    await flyMachinesRestClient.stopMachine(_appName, machineId);
+    await _flyMachinesRestClient.stopMachine(_appName, machineId);
   }
 
   Future<DataEntry> testForCreationAndResponse(FlyRegion region, {int creationTimeout = 60}) async {

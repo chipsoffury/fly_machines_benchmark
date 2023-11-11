@@ -13,7 +13,12 @@ void main(List<String> args) async {
   });
 
   var env = DotEnv(includePlatformEnvironment: true)..load();
-  var flyTestHelper = FlyTestHelper(env['FLY_AUTH_TOKEN']!);
+  var flyTestHelper = FlyTestHelper(
+    env['FLY_AUTH_TOKEN']!,
+    appName: env['FLY_APP_NAME'],
+    image: env['FLY_IMAGE'],
+    version: env['FLY_VERSION'],
+  );
 
   await flyTestHelper.stopAndDestroyAllMachines();
 
