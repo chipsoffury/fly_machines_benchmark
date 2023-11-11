@@ -42,7 +42,7 @@ class FlyTestHelper {
       machineName,
       MachineConfig(
         image: 'registry.fly.io/$_image:v$_version',
-        size: MachineSize.performance_2x,
+        size: MachineSize.shared_cpu_2x,
         env: {
           'SERVERS': 'test',
           'TEST_SERVER_PORT': port.toString(),
@@ -78,7 +78,7 @@ class FlyTestHelper {
 
     MachineInfoResponse machineInfo;
     try {
-      _log.info('Issuing a request to create $machineName');
+      _log.info('Issuing a request to create $machineName in ${flyRegion.code}');
       machineInfo = await flyMachinesRestClient.createMachine(
         _appName,
         createMachineRequest,
@@ -97,21 +97,22 @@ class FlyTestHelper {
 
     _log.info('Waiting for machine with id $machineId to start...');
 
-    try {
-      var t1 = DateTime.now().millisecondsSinceEpoch;
-      await flyMachinesRestClient.waitForMachineStatus(
-        _appName,
-        machineId,
-        FlyMachineStatus.started,
-        timeoutSeconds: timeout,
-      );
-      var t2 = DateTime.now().millisecondsSinceEpoch;
-      _log.info('Machine $machineId started in ${t2 - t1} milliseconds');
+    var t1 = DateTime.now().millisecondsSinceEpoch;
+    while (true) {
+      try {
+        await flyMachinesRestClient.waitForMachineStatus(
+          _appName,
+          machineId,
+          FlyMachineStatus.started,
+          timeoutSeconds: timeout,
+        );
+        var t2 = DateTime.now().millisecondsSinceEpoch;
+        _log.info('Machine $machineId started in ${t2 - t1} milliseconds');
 
-      return t2 - t1;
-    } catch (e) {
-      _log.severe('Waiting for server $machineId to start: request failed');
-      rethrow;
+        return t2 - t1;
+      } catch (e) {
+        // ignore
+      }
     }
   }
 
