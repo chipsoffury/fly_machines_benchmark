@@ -20,6 +20,16 @@ class DataEntry {
   DataEntry({required this.id, required this.region, required this.createdAt, required this.timeToStart, required this.timeToRespond});
 }
 
+bool canBeStopped(FlyMachineStatus status) {
+  return status != FlyMachineStatus.destroying &&
+      status != FlyMachineStatus.destroyed &&
+      status != FlyMachineStatus.starting &&
+      status != FlyMachineStatus.replacing &&
+      status != FlyMachineStatus.failed &&
+      status != FlyMachineStatus.created &&
+      status != FlyMachineStatus.unknown;
+}
+
 class FlyTestHelper {
   static final _log = Logger('FlyServerManager');
 
@@ -149,18 +159,21 @@ class FlyTestHelper {
   }
 
   Future<void> stopAndDestroyAllMachines() async {
-    var machineInfos = await _flyMachinesRestClient.listMachines(_appName);
-    while (machineInfos.isNotEmpty) {
-      _log.info('Destroying ${machineInfos.length} machines...');
+    var machines = await _flyMachinesRestClient.listMachines(_appName);
+    var startedMachines = machines.where((m) => canBeStopped(FlyMachineStatus.fromString(m.state) ?? FlyMachineStatus.unknown)).toList();
+    while (startedMachines.isNotEmpty) {
+      _log.info('Destroying ${startedMachines.length} machines...');
       try {
-        await Future.wait(machineInfos.map((m) => _flyMachinesRestClient.stopMachine(_appName, m.id)));
+        await Future.wait(startedMachines.map((m) => _flyMachinesRestClient.stopMachine(_appName, m.id)));
         await Future.delayed(Duration(seconds: 10));
-        await Future.wait(machineInfos.map((m) => _flyMachinesRestClient.destroyMachine(_appName, m.id)));
+        await Future.wait(startedMachines.map((m) => _flyMachinesRestClient.destroyMachine(_appName, m.id)));
         await Future.delayed(Duration(seconds: 2));
       } catch (e) {
         // ignore
       }
-      machineInfos = await _flyMachinesRestClient.listMachines(_appName);
+      startedMachines = (await _flyMachinesRestClient.listMachines(_appName))
+          .where((m) => canBeStopped(FlyMachineStatus.fromString(m.state) ?? FlyMachineStatus.unknown))
+          .toList();
     }
   }
 
