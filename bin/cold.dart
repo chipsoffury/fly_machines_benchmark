@@ -18,7 +18,6 @@ void main(List<String> args) async {
     appName: env['FLY_APP_NAME'],
     image: env['FLY_IMAGE'],
     version: env['FLY_VERSION'],
-    idleToStop: int.parse(env['IDLE_TO_STOP_SECONDS'] ?? '0'),
   );
 
   await flyTestHelper.stopAndDestroyAllMachines();
@@ -31,17 +30,17 @@ void main(List<String> args) async {
   var results = <List<dynamic>>[];
 
   var resultsStream =
-      Stream.fromFutures(Iterable.generate(n).map((_) => flyTestHelper.testForCreationAndResponse(region, creationTimeout: t)));
+      Stream.fromFutures(Iterable.generate(n).map((_) => flyTestHelper.testForColdResponse(region, creationTimeout: t)));
 
   await for (final entry in resultsStream) {
     results.add([entry.id, entry.region.code, entry.createdAt, entry.timeToStart, entry.timeToRespond]);
   }
 
-  var fileName = 'results-${region.code}.csv';
+  var fileName = 'results-cold-${region.code}.csv';
   var file = File(fileName);
 
   if (!(await file.exists())) {
-    results.insert(0, ['Machine id', 'Region', 'Created at', 'Time to start', 'Time to respond']);
+    results.insert(0, ['Machine id', 'Region', 'Created at', 'Time to start', 'Time to respond (cold start)']);
   }
 
   var resultsAsCSV = const ListToCsvConverter().convert(results);

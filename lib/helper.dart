@@ -39,17 +39,20 @@ class FlyTestHelper {
   late final String _image;
   late final String _version;
   late final String _baseApiUrl;
+  late final int _idleToStop;
 
   FlyTestHelper(
     String token, {
     String? appName,
     String? image,
     String? version,
+    int? idleToStop,
   }) {
     _flyMachinesRestClient = FlyMachinesRestClientProvider.get(token);
     _appName = appName ?? 'cof-health-test';
     _image = image ?? 'cof-health-test';
     _version = version ?? '0.0.3';
+    _idleToStop = idleToStop ?? 0;
     _baseApiUrl = 'https://$_appName.fly.dev';
   }
 
@@ -66,6 +69,7 @@ class FlyTestHelper {
         env: {
           'SERVERS': 'test',
           'TEST_SERVER_PORT': port.toString(),
+          'IDLE_TO_STOP_SECONDS': _idleToStop.toString(),
         },
         services: [
           MachineService(
@@ -81,7 +85,7 @@ class FlyTestHelper {
             checks: [
               MachineCheck(
                 grace_period: '0s',
-                interval: '10s',
+                interval: '${_idleToStop != 0 ? (_idleToStop + 10).toString() : '10'}s',
                 timeout: '2s',
                 method: 'get',
                 path: '/health',
@@ -186,6 +190,19 @@ class FlyTestHelper {
       var machineInfo = await createMachine(region);
       var tts = await waitForMachineToStart(machineInfo.id, timeout: creationTimeout);
       var ttr = await waitForMachineToBecomeHealthy(machineInfo.id);
+      return DataEntry(id: machineInfo.id, region: region, createdAt: machineInfo.created_at, timeToStart: tts, timeToRespond: ttr);
+    } catch (e) {
+      _log.severe('Error creating and testing machine: $e');
+      rethrow;
+    }
+  }
+
+  Future<DataEntry> testForColdResponse(FlyRegion region, {int creationTimeout = 60}) async {
+    try {
+      var machineInfo = await createMachine(region);
+      var tts = await waitForMachineToStart(machineInfo.id, timeout: creationTimeout);
+      var _ = await waitForMachineToBecomeHealthy(machineInfo.id);
+      var ttr = await Future.delayed(Duration(seconds: _idleToStop + 10), () => waitForMachineToBecomeHealthy(machineInfo.id));
       return DataEntry(id: machineInfo.id, region: region, createdAt: machineInfo.created_at, timeToStart: tts, timeToRespond: ttr);
     } catch (e) {
       _log.severe('Error creating and testing machine: $e');
