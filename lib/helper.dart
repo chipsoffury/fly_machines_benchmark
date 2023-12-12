@@ -48,7 +48,7 @@ class FlyTestHelper {
     String? version,
     int? idleToStop,
   }) {
-    _flyMachinesRestClient = FlyMachinesRestClientProvider.get(token);
+    _flyMachinesRestClient = FlyMachinesRestClient(token);
     _appName = appName ?? 'cof-health-test';
     _image = image ?? 'cof-health-test';
     _version = version ?? '0.0.3';
